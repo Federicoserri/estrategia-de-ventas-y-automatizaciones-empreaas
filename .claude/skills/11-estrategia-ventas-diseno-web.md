@@ -156,8 +156,8 @@ Diseño y desarrollo de [tipo de web] que incluye:
 ✓ [Feature 3 — ej: formulario de contacto / botón WhatsApp / reservas]
 ✓ [Feature 4 — ej: galería de trabajos / menú de servicios / catálogo]
 ✓ Diseño adaptado a móvil, tablet y escritorio
-✓ [Automatización 1 incluida — ej: respuesta automática por WhatsApp]
-✓ [Automatización 2 incluida — ej: notificación cuando llega un contacto]
+✓ [Automatización 1 — ej: formulario que avisa por WhatsApp al instante]
+✓ [Automatización 2 — ej: seguimiento automático si no responden]
 
 POR QUÉ LES CONVIENE AHORA
 ─────────────────────────
@@ -254,221 +254,81 @@ Si duda: "¿Qué te generaría más confianza para arrancar?"
 
 ---
 
-### ENTREGABLE 4: Automatizaciones para implementar
+### ENTREGABLE 4: Automatizaciones — archivos listos para usar
 
-Genera las automatizaciones más útiles para ESTE negocio específico según su rubro. Para cada una, incluye el flujo n8n listo para importar.
+No uses herramientas externas. Genera los archivos directamente con Write y ábrelos en el navegador cuando corresponda.
 
-**Selecciona las 3 automatizaciones más relevantes según el rubro:**
+**Selecciona las 3 automatizaciones más útiles según el rubro y généralas como archivos reales:**
 
 #### CRITERIOS DE SELECCIÓN:
-- Negocio con reservas (restaurante, peluquería, clínica, gimnasio) → prioriza automatización de reservas + recordatorios
-- Negocio de productos (tienda, artesanías, indumentaria) → prioriza notificación de stock + seguimiento post-compra  
-- Negocio de servicios (abogado, contador, consultor) → prioriza calificación de leads + seguimiento
-- Negocio local sin web → prioriza captura de leads desde Instagram + respuesta automática WhatsApp
-- Cualquier negocio → siempre incluye notificación de contacto nuevo
-
-#### AUTOMATIZACIÓN A — Captura y notificación de lead nuevo
-
-Descripción: Cuando alguien completa el formulario de contacto en la web, Claude recibe los datos, los guarda y le notifica al dueño por WhatsApp en menos de 1 minuto.
-
-```json
-{
-  "name": "Lead Nuevo - Notificación WhatsApp",
-  "nodes": [
-    {
-      "name": "Webhook - Formulario Web",
-      "type": "n8n-nodes-base.webhook",
-      "parameters": {
-        "path": "lead-nuevo",
-        "responseMode": "onReceived",
-        "responseData": "allEntries"
-      },
-      "position": [250, 300]
-    },
-    {
-      "name": "Formatear Mensaje",
-      "type": "n8n-nodes-base.set",
-      "parameters": {
-        "values": {
-          "string": [
-            {
-              "name": "mensaje",
-              "value": "=🔔 *LEAD NUEVO*\n\n👤 Nombre: {{$json[\"nombre\"]}}\n📱 WhatsApp: {{$json[\"telefono\"]}}\n📧 Email: {{$json[\"email\"]}}\n💬 Consulta: {{$json[\"mensaje\"]}}\n\n⏰ {{$now.format('DD/MM/YYYY HH:mm')}}"
-            }
-          ]
-        }
-      },
-      "position": [450, 300]
-    },
-    {
-      "name": "WhatsApp - Notificar Dueño",
-      "type": "n8n-nodes-base.httpRequest",
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.whatsapp.com/send",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "phone", "value": "={{$env.WHATSAPP_NUMERO_DUENO}}" },
-            { "name": "text", "value": "={{$json[\"mensaje\"]}}" }
-          ]
-        }
-      },
-      "position": [650, 300]
-    },
-    {
-      "name": "Guardar en Google Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "parameters": {
-        "operation": "append",
-        "sheetId": "={{$env.GOOGLE_SHEET_ID}}",
-        "range": "Leads!A:F",
-        "values": {
-          "values": [
-            ["={{$now.format('DD/MM/YYYY HH:mm')}}", "={{$json[\"nombre\"]}}", "={{$json[\"telefono\"]}}", "={{$json[\"email\"]}}", "={{$json[\"mensaje\"]}}", "Nuevo"]
-          ]
-        }
-      },
-      "position": [650, 450]
-    }
-  ],
-  "connections": {
-    "Webhook - Formulario Web": { "main": [[{ "node": "Formatear Mensaje", "type": "main", "index": 0 }]] },
-    "Formatear Mensaje": { "main": [[{ "node": "WhatsApp - Notificar Dueño", "type": "main", "index": 0 }, { "node": "Guardar en Google Sheets", "type": "main", "index": 0 }]] }
-  }
-}
-```
-
-**Variables de entorno a configurar en n8n:**
-- `WHATSAPP_NUMERO_DUENO`: número con código de país (ej: 5491112345678)
-- `GOOGLE_SHEET_ID`: ID de la hoja de cálculo donde guardar los leads
+- Negocio con reservas (restaurante, peluquería, clínica, gimnasio) → formulario de reserva + tracker de citas + secuencia de recordatorio
+- Negocio de productos (tienda, artesanías, indumentaria) → catálogo con WhatsApp integrado + tracker de pedidos + mensajes de seguimiento post-compra
+- Negocio de servicios (abogado, contador, consultor, diseñador) → formulario de calificación de lead + tracker de prospectos + secuencia de nurturing
+- Negocio local sin web → página de captura simple + tracker de leads + mensajes de bienvenida/seguimiento
+- Cualquier negocio → siempre incluye el tracker de prospectos
 
 ---
 
-#### AUTOMATIZACIÓN B — Respuesta automática al lead (personalizada por rubro)
+#### AUTOMATIZACIÓN A — Formulario de captura de contacto/lead
 
-Descripción: El lead recibe un mensaje automático por email o WhatsApp dentro de los 2 minutos de contactar, con información útil y el siguiente paso claro.
+Genera un archivo `formulario-[nombre-negocio].html` con:
+- Formulario completo adaptado al rubro (campos relevantes para ese negocio)
+- Al enviar: guarda los datos en localStorage del navegador Y abre WhatsApp del dueño con el mensaje pre-completado con los datos del lead
+- Diseño profesional, adaptado al rubro (colores, tono, copy)
+- Funciona sin servidor — solo abrirlo en el navegador
 
-```json
-{
-  "name": "Respuesta Automática - Lead Nuevo",
-  "nodes": [
-    {
-      "name": "Trigger - Lead Recibido",
-      "type": "n8n-nodes-base.webhook",
-      "parameters": {
-        "path": "lead-respuesta",
-        "responseMode": "onReceived"
-      },
-      "position": [250, 300]
-    },
-    {
-      "name": "Esperar 2 minutos",
-      "type": "n8n-nodes-base.wait",
-      "parameters": {
-        "amount": 2,
-        "unit": "minutes"
-      },
-      "position": [450, 300]
-    },
-    {
-      "name": "Email de respuesta",
-      "type": "n8n-nodes-base.emailSend",
-      "parameters": {
-        "fromEmail": "={{$env.EMAIL_NEGOCIO}}",
-        "toEmail": "={{$json[\"email\"]}}",
-        "subject": "=Recibimos tu consulta, {{$json[\"nombre\"]}} 👋",
-        "text": "=Hola {{$json[\"nombre\"]}},\n\nGracias por contactarnos. Recibimos tu consulta y nos estaremos comunicando contigo en las próximas horas.\n\nMientras tanto, podés ver nuestros trabajos en [LINK PORTFOLIO].\n\nSaludos,\n[NOMBRE DEL NEGOCIO]"
-      },
-      "position": [650, 300]
-    }
-  ],
-  "connections": {
-    "Trigger - Lead Recibido": { "main": [[{ "node": "Esperar 2 minutos", "type": "main", "index": 0 }]] },
-    "Esperar 2 minutos": { "main": [[{ "node": "Email de respuesta", "type": "main", "index": 0 }]] }
-  }
-}
+Ejemplo del comportamiento al enviar:
+```javascript
+// Al submit: construye el mensaje y abre WhatsApp
+const mensaje = `Nuevo contacto desde la web:\nNombre: ${nombre}\nTelefono: ${tel}\nConsulta: ${consulta}`;
+window.open(`https://wa.me/[NUMERO_DUENO]?text=${encodeURIComponent(mensaje)}`);
 ```
-
-**Variables a configurar:**
-- `EMAIL_NEGOCIO`: email desde el que se envía
-- Personalizar el texto del email con el nombre real del negocio y link al portfolio
 
 ---
 
-#### AUTOMATIZACIÓN C — Seguimiento a leads sin respuesta (3 días)
+#### AUTOMATIZACIÓN B — Secuencia de mensajes de seguimiento
 
-Descripción: Si un lead no respondió en 3 días, envía un seguimiento automático para reactivar la conversación.
+Genera un archivo `seguimiento-[nombre-negocio].md` con la secuencia completa de mensajes listos para copiar y pegar, personalizados para el rubro:
 
-```json
-{
-  "name": "Seguimiento Lead Sin Respuesta",
-  "nodes": [
-    {
-      "name": "Trigger Diario",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "parameters": {
-        "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 10 * * *" }]
-        }
-      },
-      "position": [250, 300]
-    },
-    {
-      "name": "Leer Google Sheets - Leads",
-      "type": "n8n-nodes-base.googleSheets",
-      "parameters": {
-        "operation": "read",
-        "sheetId": "={{$env.GOOGLE_SHEET_ID}}",
-        "range": "Leads!A:F"
-      },
-      "position": [450, 300]
-    },
-    {
-      "name": "Filtrar - Sin respuesta hace 3 días",
-      "type": "n8n-nodes-base.filter",
-      "parameters": {
-        "conditions": {
-          "string": [
-            { "value1": "={{$json[\"estado\"]}}", "operation": "equal", "value2": "Nuevo" }
-          ],
-          "dateTime": [
-            { "value1": "={{$json[\"fecha\"]}}", "operation": "before", "value2": "={{$now.minus({days: 3}).toISO()}}" }
-          ]
-        }
-      },
-      "position": [650, 300]
-    },
-    {
-      "name": "Email de seguimiento",
-      "type": "n8n-nodes-base.emailSend",
-      "parameters": {
-        "fromEmail": "={{$env.EMAIL_NEGOCIO}}",
-        "toEmail": "={{$json[\"email\"]}}",
-        "subject": "=¿Pudiste ver nuestra propuesta, {{$json[\"nombre\"]}}?",
-        "text": "=Hola {{$json[\"nombre\"]}},\n\nTe escribo porque hace unos días nos contactaste y quería asegurarme de que recibiste nuestra respuesta.\n\n¿Tuviste oportunidad de verla? Quedamos a disposición para cualquier consulta.\n\nSaludos,\n[NOMBRE DEL NEGOCIO]"
-      },
-      "position": [850, 300]
-    },
-    {
-      "name": "Actualizar estado en Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "parameters": {
-        "operation": "update",
-        "sheetId": "={{$env.GOOGLE_SHEET_ID}}",
-        "range": "Leads!F{{$itemIndex + 2}}",
-        "values": { "values": [["Seguimiento enviado"]] }
-      },
-      "position": [850, 450]
-    }
-  ],
-  "connections": {
-    "Trigger Diario": { "main": [[{ "node": "Leer Google Sheets - Leads", "type": "main", "index": 0 }]] },
-    "Leer Google Sheets - Leads": { "main": [[{ "node": "Filtrar - Sin respuesta hace 3 días", "type": "main", "index": 0 }]] },
-    "Filtrar - Sin respuesta hace 3 días": { "main": [[{ "node": "Email de seguimiento", "type": "main", "index": 0 }, { "node": "Actualizar estado en Sheets", "type": "main", "index": 0 }]] }
-  }
-}
 ```
+SECUENCIA DE SEGUIMIENTO — [Nombre del negocio]
+
+DÍA 0 — Mensaje inicial (enviar al cerrar el contacto)
+WhatsApp:
+"[Mensaje personalizado para el primer contacto, tono del rubro]"
+
+DÍA 1 — Si no respondió
+WhatsApp:
+"[Mensaje de seguimiento suave, menciona algo específico del negocio]"
+
+DÍA 3 — Si sigue sin responder
+WhatsApp:
+"[Mensaje con nuevo ángulo — aporta algo de valor antes de volver a ofrecer]"
+
+DÍA 7 — Último intento
+WhatsApp:
+"[Mensaje de cierre amigable, deja la puerta abierta]"
+
+EMAIL ALTERNATIVO (si tienen email)
+Asunto: [Asunto personalizado para el rubro]
+Cuerpo: [Email completo listo para enviar]
+```
+
+---
+
+#### AUTOMATIZACIÓN C — Tracker de prospectos (mini CRM)
+
+Genera un archivo `tracker-prospectos.html` — una página HTML standalone que funciona como CRM mínimo viable:
+
+- Tabla de prospectos con columnas: Negocio, Rubro, Contacto, Estado (Analizado / Propuesta enviada / En negociación / Cerrado / Perdido), Fecha, Notas
+- Botones para cambiar el estado con un click
+- Filtro por estado
+- Los datos se guardan en localStorage (persisten aunque se cierre el navegador)
+- Botón "Exportar CSV" para sacar los datos
+- Botón "Agregar prospecto" con formulario inline
+- Al abrir, carga el prospecto actual ya pre-cargado con los datos que se acaban de analizar
+
+El archivo se genera una sola vez y se reutiliza para todos los prospectos futuros. Si ya existe `tracker-prospectos.html` en el proyecto, solo agrega el nuevo prospecto al localStorage sin reescribir el archivo.
 
 ---
 
@@ -483,17 +343,19 @@ RESUMEN — [Nombre del negocio]
 
 ✓ Análisis completado: [rubro] en [ciudad si se sabe]
 ✓ Propuesta comercial: lista para enviar
-✓ Script de ventas: adaptado a sus objeciones habituales
-✓ Automatizaciones generadas: [lista las 3 que generaste]
+✓ Script de ventas: con objeciones del rubro
+✓ Archivos generados:
+   → formulario-[negocio].html   (captura de leads con WhatsApp)
+   → seguimiento-[negocio].md    (mensajes día 0, 1, 3 y 7)
+   → tracker-prospectos.html     (CRM — [negocio] ya cargado)
 
-PRÓXIMOS PASOS SUGERIDOS:
-1. Enviar la propuesta por [WhatsApp/email según lo que tienen]
-2. Si responden: usar el script en la reunión
-3. Si no responden en 3 días: hacer seguimiento manual
-4. Al cerrar: implementar las automatizaciones en n8n
+PRÓXIMOS PASOS:
+1. Enviar la propuesta por [WhatsApp/email]
+2. Si responden → usar el script en la reunión
+3. Si no responden → seguir la secuencia del .md
+4. Al cerrar → registrar en tracker-prospectos.html
 
-¿Querés ajustar algo de la propuesta o el script?
-¿O arrancamos con otro prospecto?
+¿Ajustamos algo o arrancamos con otro prospecto?
 ```
 
 ---
